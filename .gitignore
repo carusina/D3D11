@@ -1,0 +1,27 @@
+# Visual Studio generated files
+.vs/
+*.suo
+*.user
+*.sln
+*.vcxproj
+*.filters
+*.user
+
+# Build results
+[Bb]in/
+[Dd]ebug/
+[Rr]elease/
+x64/
+Win32/
+
+# Other temporary files
+.Assets/
+*.obj
+*.ilk
+*.pdb
+*.pch
+*.clang-format
+*.jpg
+*.png
+*.dds
+*.py
