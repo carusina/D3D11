@@ -26,6 +26,7 @@ struct BasicPixelConstantData {
     Material material;        // 48
     Light lights[MAX_LIGHTS]; // 48 * MAX_LIGHTS
     //TODO:
+    Vector4 indexColor; // Picking¿¡ »ç¿ë
 };
 
 static_assert((sizeof(BasicPixelConstantData) % 16) == 0,

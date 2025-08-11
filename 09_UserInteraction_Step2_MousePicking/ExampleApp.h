@@ -30,6 +30,7 @@ class ExampleApp : public AppBase {
     BasicMeshGroup m_meshGroupGround;
     BasicMeshGroup m_meshGroupSphere;
     //TODO:
+    BasicMeshGroup m_meshGroupBox;
     CubeMapping m_cubeMapping;
 
     bool m_usePerspectiveProjection = true;

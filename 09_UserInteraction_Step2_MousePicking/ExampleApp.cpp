@@ -62,12 +62,34 @@ bool ExampleApp::Initialize() {
             Vector3(0.5f, 0.5f, 0.5f);
         m_meshGroupSphere.m_basicPixelConstantData.material.specular =
             Vector3(0.0f);
+        m_meshGroupSphere.m_basicPixelConstantData.indexColor =
+            Vector4(1.0f, 0.0f, 0.0f, 0.0f);
         m_meshGroupSphere.UpdateConstantBuffers(m_device, m_context);
     }
 
     // 물체 2
     {
         // TODO:
+        MeshData box = GeometryGenerator::MakeBox(0.1f);
+        m_meshGroupBox.Initialize(m_device, {box});
+        m_meshGroupBox.m_diffuseResView = m_cubeMapping.m_diffuseResView;
+        m_meshGroupBox.m_specularResView = m_cubeMapping.m_specularResView;
+        Matrix modelMat = Matrix::CreateTranslation({0.2f, 0.1f, 0.6f});
+        Matrix invTransposeRow = modelMat;
+        invTransposeRow.Translation(Vector3(0.0f));
+        invTransposeRow = invTransposeRow.Invert().Transpose();
+        m_meshGroupBox.m_basicVertexConstantData.model =
+            modelMat.Transpose();
+        m_meshGroupBox.m_basicVertexConstantData.invTranspose =
+            invTransposeRow.Transpose();
+        m_meshGroupBox.m_basicPixelConstantData.useTexture = false;
+        m_meshGroupBox.m_basicPixelConstantData.material.diffuse =
+            Vector3(0.5f, 0.5f, 0.5f);
+        m_meshGroupBox.m_basicPixelConstantData.material.specular =
+            Vector3(0.0f);
+        m_meshGroupBox.m_basicPixelConstantData.indexColor =
+            Vector4(0.0f, 1.0f, 0.0f, 0.0f);
+        m_meshGroupBox.UpdateConstantBuffers(m_device, m_context);
     }
 
     BuildFilters();
@@ -109,10 +131,32 @@ void ExampleApp::Update(float dt) {
         projRow.Transpose();
 
     // TODO:
+    if (m_pickColor[0] == 255) {
+        m_meshGroupSphere.m_basicPixelConstantData.material.diffuse =
+            Vector3(1.0f, 0.0f, 0.0f);
+    } else {
+        m_meshGroupSphere.m_basicPixelConstantData.material.diffuse =
+            Vector3(0.5f);
+    }
 
     m_meshGroupSphere.UpdateConstantBuffers(m_device, m_context);
 
     // TODO:
+    m_meshGroupBox.m_basicPixelConstantData.eyeWorld = eyeWorld;
+    m_meshGroupBox.m_basicVertexConstantData.view = viewRow.Transpose();
+    m_meshGroupBox.m_basicVertexConstantData.projection =
+        projRow.Transpose();
+
+    if (m_pickColor[1] == 255) {
+        m_meshGroupBox.m_basicPixelConstantData.material.diffuse =
+            Vector3(0.0f, 1.0f, 0.0f);
+    } else {
+        m_meshGroupBox.m_basicPixelConstantData.material.diffuse =
+            Vector3(0.5f);
+    }
+
+    m_meshGroupBox.UpdateConstantBuffers(m_device, m_context);
+
 
     if (m_dirtyflag && m_filters.size() > 1) {
         m_filters[1]->m_pixelConstData.threshold = m_threshold;
@@ -159,6 +203,7 @@ void ExampleApp::Render() {
     m_meshGroupGround.Render(m_context);
     m_meshGroupSphere.Render(m_context);
     // TODO:
+    m_meshGroupBox.Render(m_context);
 
     // 물체 렌더링 후 큐브매핑
     m_cubeMapping.Render(m_context);
@@ -182,6 +227,25 @@ void ExampleApp::Render() {
     {
         // TODO: m_pickColor 업데이트
         //  GPU->CPU는 화면 캡쳐 코드 참고
+        m_context->ResolveSubresource(m_indexTempTexture.Get(), 0,
+                                      m_indexTexture.Get(), 0,
+                                      DXGI_FORMAT_R8G8B8A8_UNORM);
+
+        D3D11_BOX box;
+        box.left = m_cursorX;
+        box.right = m_cursorX + 1;
+        box.top = m_cursorY;
+        box.bottom = m_cursorY + 1;
+        box.front = 0;
+        box.back = 1;
+        m_context->CopySubresourceRegion(m_indexStagingTexture.Get(), 0, 0, 0,
+                                         0, m_indexTempTexture.Get(), 0, &box);
+
+        D3D11_MAPPED_SUBRESOURCE ms;
+        m_context->Map(m_indexStagingTexture.Get(), NULL, D3D11_MAP_READ, NULL,
+                       &ms);
+        memcpy(m_pickColor, ms.pData, sizeof(uint8_t) * 4);
+        m_context->Unmap(m_indexStagingTexture.Get(), NULL);
     }
 }
 

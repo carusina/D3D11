@@ -102,7 +102,7 @@ PixelShaderOutput main(PixelShaderInput input)
 
     PixelShaderOutput output;
     output.pixelColor = diffuse + specular;
-    output.indexColor = float4(0.0f, 0.0f, 0.0f, 0.0f); //TODO:
+    output.indexColor = indexColor; //TODO:
     
     return output;
 }
