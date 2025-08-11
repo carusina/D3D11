@@ -113,30 +113,33 @@ void ExampleApp::Update(float dt) {
         // OnMouseMove()에서 m_cursorNdcX, m_cursorNdcY 저장
 
         // ViewFrustum에서 가까운 면 위의 커서 위치 (z값 주의)
-        // Vector3 cursorNdcNear = Vector3(...);
+        Vector3 cursorNdcNear = Vector3(m_cursorNdcX, m_cursorNdcY, 0.0f);
 
         // ViewFrustum에서 먼 면 위의 커서 위치 (z값 주의)
-        // Vector3 cursorNdcFar = Vector3(...);
+        Vector3 cursorNdcFar = Vector3(m_cursorNdcX, m_cursorNdcY, 1.0f);
 
         // NDC 커서 위치를 월드 좌표계로 역변환 해주는 행렬
-        // Matrix inverseProjView = ...;
+        Matrix inverseProjView = (viewRow * projRow).Invert();
 
         // ViewFrustum 안에서 PickingRay의 방향 구하기
-        // ...
-        // Vector3 dir = ...;
-        // dir.Normalize();
+        Vector3 cursorWorldNear =
+            Vector3::Transform(cursorNdcNear, inverseProjView);
+        Vector3 cursorWorldFar =
+            Vector3::Transform(cursorNdcFar, inverseProjView);
+        Vector3 dir = cursorWorldFar - cursorWorldNear;
+        dir.Normalize();
 
         // 광선을 만들고 충돌 감지
-        // SimpleMath::Ray curRay = SimpleMath::Ray(...);
+        SimpleMath::Ray curRay = SimpleMath::Ray(cursorWorldNear, dir);
         float dist = 0.0f;
-        // m_selected = curRay.Intersects(m_mainBoundingSphere, ...);
+        m_selected = curRay.Intersects(m_mainBoundingSphere, dist);
 
         if (m_selected) {
             m_cursorSphere.m_basicPixelConstantData.eyeWorld = eyeWorld;
 
             // 충돌 지점에 작은 구 그리기
-            Matrix modelMat =
-                Matrix::CreateTranslation(0.0f, 0.0f, 0.0f); //TODO:
+            Matrix modelMat = Matrix::CreateTranslation(cursorWorldNear +
+                                                        dist * dir); // TODO:
 
             Matrix invTransposeRow = modelMat;
             invTransposeRow.Translation(Vector3(0.0f));
