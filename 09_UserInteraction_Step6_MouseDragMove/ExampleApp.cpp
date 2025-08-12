@@ -149,6 +149,11 @@ void ExampleApp::Update(float dt) {
                 prevPos = pickPoint;
             } else {
                 //TODO:
+                Vector3 newPos = cursorWorldNear +
+                                 prevRatio * (cursorWorldFar - cursorWorldNear);
+
+                dragTranslation = newPos - prevPos;
+                prevPos = newPos;
             }
         }
     }
