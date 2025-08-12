@@ -142,16 +142,15 @@ void ExampleApp::Update(float dt) {
             // mainSphere를 어떻게 회전시킬지 결정
             if (m_dragStartFlag) { // 드래그를 시작하는 경우
                 m_dragStartFlag = false;
-
-                // prevVector = ...
-
+                prevVector = pickPoint - m_mainBoundingSphere.Center;
             } else {
-                Vector3 currentVector; // TODO:
+                Vector3 currentVector = pickPoint - m_mainBoundingSphere.Center; // TODO:
 
                 // 마우스가 조금이라도 움직였을 경우에만 회전시키기
                 if ((currentVector - prevVector).Length() > 1e-3) {
-
                     // TODO: Quaternion::FromToRotation() 사용
+                    q = SimpleMath::Quaternion::FromToRotation(prevVector,
+                                                               currentVector);
 
                     prevVector = currentVector;
                 }
@@ -164,7 +163,12 @@ void ExampleApp::Update(float dt) {
 
     // 쿼터니언을 이용한 회전
     // TODO:
-    m_mainSphere.UpdateModelWorld(Matrix::CreateFromQuaternion(q) *
+    // 회전만 남김
+    m_mainSphere.m_modelWorldRow.Translation(Vector3(0.0f));
+    
+    // 쿼터니언을 이용한 회전
+    m_mainSphere.UpdateModelWorld(m_mainSphere.m_modelWorldRow *
+                                  Matrix::CreateFromQuaternion(q) *
                                   Matrix::CreateTranslation(translation));
 
     m_mainSphere.m_basicVertexConstantData.view = viewRow.Transpose();
