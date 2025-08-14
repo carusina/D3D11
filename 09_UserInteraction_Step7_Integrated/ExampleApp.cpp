@@ -98,19 +98,17 @@ void ExampleApp::Update(float dt) {
         m_device, m_context, viewRow.Transpose(), projRow.Transpose());
 
     // mainSphere의 이동 계산용
-    static float prevRatio = 0.0f;
-    static Vector3 prevPos(0.0f);
+    
 
     Vector3 dragTranslation(0.0f);
 
     // mainSphere의 회전 계산용
-    static Vector3 prevVector(0.0f);
+    
     Quaternion q =
         Quaternion::CreateFromAxisAngle(Vector3(1.0f, 0.0f, 0.0f), 0.0f);
 
-    // 마우스 선택했을 때만 업데이트
-    if (m_leftButton) {
-
+    // 마우스 클릭했을 때만 업데이트
+    if (m_leftButton || m_rightButton) {
         // ViewFrustum에서 가까운 면 위의 커서 위치
         // ViewFrustum에서 먼 면 위의 커서 위치
         Vector3 cursorNdcNear = Vector3(m_cursorNdcX, m_cursorNdcY, 0.0f);
@@ -133,7 +131,6 @@ void ExampleApp::Update(float dt) {
         m_selected = curRay.Intersects(m_mainBoundingSphere, dist);
 
         if (m_selected) {
-
             Vector3 pickPoint = cursorWorldNear + dist * dir;
 
             // 충돌 지점에 작은 구 그리기
@@ -145,71 +142,57 @@ void ExampleApp::Update(float dt) {
             m_cursorSphere.m_basicPixelConstantData.eyeWorld = eyeWorld;
             m_cursorSphere.UpdateConstantBuffers(m_device, m_context);
 
-            // mainSphere를 어떻게 이동시킬지 결정
-            if (m_dragStartFlag) { // 드래그를 시작하는 경우
-                m_dragStartFlag = false;
-                prevRatio = dist / (cursorWorldFar - cursorWorldNear).Length();
-                prevPos = pickPoint;
-            } else {
-                //TODO:
-                Vector3 newPos = cursorWorldNear +
-                                 prevRatio * (cursorWorldFar - cursorWorldNear);
+            // 좌클릭시 이동
+            if (m_leftButton) {
+                static float prevRatio = 0.0f;
+                static Vector3 prevPos(0.0f);
 
-                dragTranslation = newPos - prevPos;
-                prevPos = newPos;
+                // mainSphere를 어떻게 이동시킬지 결정
+                if (m_dragStartFlag) { // 드래그를 시작하는 경우
+                    m_dragStartFlag = false;
+                    prevRatio =
+                        dist / (cursorWorldFar - cursorWorldNear).Length();
+                    prevPos = pickPoint;
+                } else {
+                    Vector3 newPos =
+                        cursorWorldNear +
+                        prevRatio * (cursorWorldFar - cursorWorldNear);
+
+                    dragTranslation = newPos - prevPos;
+                    prevPos = newPos;
+                }
             }
-        }
-    } else if (m_rightButton) {
-        Vector3 cursorNdcNear = Vector3(m_cursorNdcX, m_cursorNdcY, 0.0f);
-        Vector3 cursorNdcFar = Vector3(m_cursorNdcX, m_cursorNdcY, 1.0f);
 
-        Matrix inverseProjView = (viewRow * projRow).Invert();
+            // 우클릭시 회전
+            if (m_rightButton) {
+                static Vector3 prevVector(0.0f);
 
-        Vector3 cursorWorldNear =
-            Vector3::Transform(cursorNdcNear, inverseProjView);
-        Vector3 cursorWorldFar =
-            Vector3::Transform(cursorNdcFar, inverseProjView);
-        Vector3 dir = cursorWorldFar - cursorWorldNear;
-        dir.Normalize();
+                if (m_dragStartFlag) {
+                    m_dragStartFlag = false;
+                    prevVector = pickPoint - m_mainBoundingSphere.Center;
+                    // prevVector.Normalize();
+                } else {
+                    Vector3 currentVector =
+                        pickPoint - m_mainBoundingSphere.Center;
+                    // currentVector.Normalize();
+                    // float theta = acos(prevVector.Dot(currentVector));
+                    if ((currentVector - prevVector).Length() >
+                        1e-3f) { // if (theta > 3.141592f / 180.0f)
+                        q = SimpleMath::Quaternion::FromToRotation(
+                            prevVector, currentVector);
+                        // Vector3 axis = prevVector.Cross(currentVector);
+                        // axis.Normalize();
+                        // q = SimpleMath::Quaternion::CreateFromAxisAngle(axis,
+                        // theta);
 
-        SimpleMath::Ray curRay = SimpleMath::Ray(cursorWorldNear, dir);
-        float dist = 0.0f;
-        m_selected = curRay.Intersects(m_mainBoundingSphere, dist);
-
-        if (m_selected) {
-            Vector3 pickPoint = cursorWorldNear + dist * dir;
-
-            m_cursorSphere.UpdateModelWorld(
-                Matrix::CreateTranslation(pickPoint));
-            m_cursorSphere.m_basicVertexConstantData.view = viewRow.Transpose();
-            m_cursorSphere.m_basicVertexConstantData.projection =
-                projRow.Transpose();
-            m_cursorSphere.m_basicPixelConstantData.eyeWorld = eyeWorld;
-            m_cursorSphere.UpdateConstantBuffers(m_device, m_context);
-
-            if (m_dragStartFlag) {
-                m_dragStartFlag = false;
-                prevVector = pickPoint - m_mainBoundingSphere.Center;
-                // prevVector.Normalize();
-            } else {
-                Vector3 currentVector = pickPoint - m_mainBoundingSphere.Center;
-                // currentVector.Normalize();
-                // float theta = acos(prevVector.Dot(currentVector));
-                if ((currentVector - prevVector).Length() >
-                    1e-3f) { // if (theta > 3.141592f / 180.0f)
-                    q = SimpleMath::Quaternion::FromToRotation(prevVector,
-                                                               currentVector);
-                    // Vector3 axis = prevVector.Cross(currentVector);
-                    // axis.Normalize();
-                    // q = SimpleMath::Quaternion::CreateFromAxisAngle(axis,
-                    // theta);
-
-                    prevVector = currentVector;
+                        prevVector = currentVector;
+                    }
                 }
             }
         }
     }
-    // 원래 물체의 위치 저장
+
+    // 물체의 원래 위치 저장
     Vector3 translation = m_mainSphere.m_modelWorldRow.Translation();
     
     // 회전을 위해 원점으로 이동 (이동하지 않을 시 의도하지 않은 대로 회전)
