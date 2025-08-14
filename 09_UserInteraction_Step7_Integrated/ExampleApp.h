@@ -30,6 +30,8 @@ class ExampleApp : public AppBase {
   protected:
     BasicMeshGroup m_mainSphere;
     BoundingSphere m_mainBoundingSphere;
+    BasicMeshGroup m_box;
+    BoundingSphere m_boxBoundingSphere;
     BasicMeshGroup m_cursorSphere;
     CubeMapping m_cubeMapping;
 

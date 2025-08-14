@@ -178,9 +178,9 @@ void AppBase::UpdateMousePickColor() { // Picking
     memcpy(m_pickColor, ms.pData, sizeof(uint8_t) * 4);
     m_context->Unmap(m_indexStagingTexture.Get(), NULL);
 
-    // cout << int(m_pickColor[0]) << " " << int(m_pickColor[1]) << " "
-    //      << int(m_pickColor[2]) << " " << int(m_pickColor[3])
-    //      << endl;
+   /*cout << int(m_pickColor[0]) << " " << int(m_pickColor[1]) << " "
+        << int(m_pickColor[2]) << " " << int(m_pickColor[3])
+        << endl;*/
 }
 
 LRESULT AppBase::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {

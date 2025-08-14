@@ -46,6 +46,25 @@ bool ExampleApp::Initialize() {
         m_mainBoundingSphere = BoundingSphere(center, radius);
     }
 
+    // Box
+    {
+        Vector3 center(2.0f, 0.3f, 3.0f);
+        float extent = 0.5f;
+        MeshData box = GeometryGenerator::MakeBox(extent);
+        m_box.Initialize(m_device, {box});
+        m_box.m_diffuseResView = m_cubeMapping.m_diffuseResView;
+        m_box.m_specularResView = m_cubeMapping.m_specularResView;
+        m_box.UpdateModelWorld(Matrix::CreateTranslation(center));
+        m_box.m_basicPixelConstantData.useTexture = false;
+        m_box.m_basicPixelConstantData.material.diffuse = Vector3(0.5f);
+        m_box.m_basicPixelConstantData.material.specular = Vector3(0.1f);
+        m_box.m_basicPixelConstantData.indexColor =
+            Vector4(0.0f, 1.0f, 0.0f, 0.0f);
+        m_box.UpdateConstantBuffers(m_device, m_context);
+
+        m_boxBoundingSphere = BoundingSphere(center, extent * sqrt(2.0f));
+    }
+
     // Cursor Sphere
     // Main sphere와의 충돌이 감지되면 월드 공간에 작게 그려지는 구
     {
@@ -97,13 +116,21 @@ void ExampleApp::Update(float dt) {
     m_cubeMapping.UpdateConstantBuffers(
         m_device, m_context, viewRow.Transpose(), projRow.Transpose());
 
-    // mainSphere의 이동 계산용
-    
+    static BasicMeshGroup *pSelectedObject = nullptr;
+    static BoundingSphere *pSelectedBoundingSphere = nullptr;
 
+    if (m_pickColor[0] == 255) {
+        pSelectedObject = &m_mainSphere;
+        pSelectedBoundingSphere = &m_mainBoundingSphere;
+    } else if (m_pickColor[1] == 255) {
+        pSelectedObject = &m_box;
+        pSelectedBoundingSphere = &m_boxBoundingSphere;
+    }
+
+    // mainSphere의 이동 계산용
     Vector3 dragTranslation(0.0f);
 
     // mainSphere의 회전 계산용
-    
     Quaternion q =
         Quaternion::CreateFromAxisAngle(Vector3(1.0f, 0.0f, 0.0f), 0.0f);
 
@@ -128,9 +155,12 @@ void ExampleApp::Update(float dt) {
         // 광선을 만들고 충돌 감지
         SimpleMath::Ray curRay = SimpleMath::Ray(cursorWorldNear, dir);
         float dist = 0.0f;
-        m_selected = curRay.Intersects(m_mainBoundingSphere, dist);
+        
+        if (pSelectedBoundingSphere) {
+            m_selected = curRay.Intersects(*pSelectedBoundingSphere, dist);
+        }
 
-        if (m_selected) {
+        if (m_selected && pSelectedBoundingSphere) {
             Vector3 pickPoint = cursorWorldNear + dist * dir;
 
             // 충돌 지점에 작은 구 그리기
@@ -169,11 +199,11 @@ void ExampleApp::Update(float dt) {
 
                 if (m_dragStartFlag) {
                     m_dragStartFlag = false;
-                    prevVector = pickPoint - m_mainBoundingSphere.Center;
+                    prevVector = pickPoint - pSelectedBoundingSphere->Center;
                     // prevVector.Normalize();
                 } else {
                     Vector3 currentVector =
-                        pickPoint - m_mainBoundingSphere.Center;
+                        pickPoint - pSelectedBoundingSphere->Center;
                     // currentVector.Normalize();
                     // float theta = acos(prevVector.Dot(currentVector));
                     if ((currentVector - prevVector).Length() >
@@ -192,26 +222,32 @@ void ExampleApp::Update(float dt) {
         }
     }
 
-    // 물체의 원래 위치 저장
-    Vector3 translation = m_mainSphere.m_modelWorldRow.Translation();
-    
-    // 회전을 위해 원점으로 이동 (이동하지 않을 시 의도하지 않은 대로 회전)
-    m_mainSphere.m_modelWorldRow.Translation(Vector3(0.0f));
-    m_mainSphere.UpdateModelWorld(m_mainSphere.m_modelWorldRow *
-                                  Matrix::CreateFromQuaternion(q) *
-                                  Matrix::CreateTranslation(translation));
+    if (pSelectedObject) {
+        // 물체의 원래 위치 저장
+        Vector3 translation = pSelectedObject->m_modelWorldRow.Translation();
 
-    // 물체 이동
-    m_mainSphere.UpdateModelWorld(m_mainSphere.m_modelWorldRow *
-                                  Matrix::CreateTranslation(dragTranslation));
+        // 회전을 위해 원점으로 이동 (이동하지 않을 시 의도하지 않은 대로 회전)
+        pSelectedObject->m_modelWorldRow.Translation(Vector3(0.0f));
 
-    // Bounding Sphere도 같이 이동
-    m_mainBoundingSphere.Center = m_mainSphere.m_modelWorldRow.Translation();
+        pSelectedObject->UpdateModelWorld(
+            pSelectedObject->m_modelWorldRow * Matrix::CreateFromQuaternion(q) *
+            Matrix::CreateTranslation(translation) *
+            Matrix::CreateTranslation(dragTranslation));
+
+        // Bounding Sphere도 같이 이동
+        pSelectedBoundingSphere->Center =
+            pSelectedObject->m_modelWorldRow.Translation();
+    }
 
     m_mainSphere.m_basicVertexConstantData.view = viewRow.Transpose();
     m_mainSphere.m_basicVertexConstantData.projection = projRow.Transpose();
     m_mainSphere.m_basicPixelConstantData.eyeWorld = eyeWorld;
     m_mainSphere.UpdateConstantBuffers(m_device, m_context);
+
+    m_box.m_basicVertexConstantData.view = viewRow.Transpose();
+    m_box.m_basicVertexConstantData.projection = projRow.Transpose();
+    m_box.m_basicPixelConstantData.eyeWorld = eyeWorld;
+    m_box.UpdateConstantBuffers(m_device, m_context);
 
     if (m_dirtyflag && m_filters.size() > 1) {
         m_filters[1]->m_pixelConstData.threshold = m_threshold;
@@ -256,6 +292,7 @@ void ExampleApp::Render() {
     }
 
     m_mainSphere.Render(m_context);
+    m_box.Render(m_context);
 
     if ((m_leftButton || m_rightButton) && m_selected)
         m_cursorSphere.Render(m_context);
